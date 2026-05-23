@@ -121,7 +121,7 @@ bash install.sh
 或通过 curl：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<用户名>/memory-palace/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Tino-Tian/memory-palace/main/install.sh | bash
 ```
 
 自动完成：检测系统 → 安装 sqlite3 → 创建目录 → 写入文件 → 初始化数据库 → 配置 Claude Code。
@@ -135,7 +135,7 @@ curl -fsSL https://raw.githubusercontent.com/<用户名>/memory-palace/main/inst
 或一行：
 
 ```powershell
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/<用户名>/memory-palace/main/install.ps1" -OutFile "install.ps1"; .\install.ps1
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Tino-Tian/memory-palace/main/install.ps1" -OutFile "install.ps1"; .\install.ps1
 ```
 
 自动完成：检测 sqlite3 → winget 安装 → 创建目录 → 写入文件 → 初始化数据库。
