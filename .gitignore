@@ -1,0 +1,12 @@
+# 个人记忆数据 — 绝对不能上传
+palace.db
+
+# 归档的记忆
+归档/*.db.gz
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
