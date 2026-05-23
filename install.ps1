@@ -568,7 +568,7 @@ ls ~/memory-palace/归档/ | wc -l | xargs echo "归档包数:"
 - 如果当前对话没有产生值得保存的内容（纯闲聊），跳过后三步（3.3-3.5）
 '@ | Set-Content -Path "$INSTALL_DIR\SKILL.md" -Encoding UTF8
 
-Write-Host "  ✓ 共写入 8 个文件" -ForegroundColor Green
+Write-Host "  ✓ 共写入 6 个文件" -ForegroundColor Green
 
 # ============================================================
 # 5. 初始化数据库
