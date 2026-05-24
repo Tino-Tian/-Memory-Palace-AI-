@@ -209,11 +209,11 @@ WHERE level='raw' AND date <= date('now','-3 days');
 
 # digest 超过 7 天 → 导出为 SQLite 数据库，gzip 压缩，从主库删除
 sqlite3 ~/memory-palace/palace.db "
-ATTACH '~/memory-palace/归档/$(date +%Y-W%V).db' AS archive;
+ATTACH '~/memory-palace/归档/$(date +%Y-W%V)-$(date +%H%M%S).db' AS archive;
 CREATE TABLE archive.entries (id, category_id, date, level, content, keywords, conversation_id);
 INSERT INTO archive.entries SELECT * FROM entries WHERE level='digest' AND date <= date('now','-7 days');
 "
-gzip -f ~/memory-palace/归档/$(date +%Y-W%V).db
+gzip -f ~/memory-palace/归档/$(date +%Y-W%V)-$(date +%H%M%S).db
 
 sqlite3 ~/memory-palace/palace.db "
 DELETE FROM entries WHERE level='digest' AND date <= date('now','-7 days');

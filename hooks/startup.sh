@@ -12,7 +12,7 @@ sqlite3 "$DB" "UPDATE entries SET level='digest' WHERE level='raw' AND date <= d
 COUNT=$(sqlite3 "$DB" "SELECT COUNT(*) FROM entries WHERE level='digest' AND date <= date('now','-7 days');" 2>/dev/null || echo 0)
 if [ "$COUNT" -gt 0 ]; then
     mkdir -p "$ARCHIVE_DIR"
-    WEEK=$(date +%Y-W%V)
+    WEEK="$(date +%Y-W%V)-$(date +%H%M%S)"
     ARCHIVE_DB="$ARCHIVE_DIR/$WEEK.db"
     # 创建归档库（独立 SQLite 文件，带完整表结构）
     sqlite3 "$ARCHIVE_DB" "
