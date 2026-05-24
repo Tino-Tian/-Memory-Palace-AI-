@@ -38,12 +38,50 @@ CREATE TABLE IF NOT EXISTS conversation_index (
     entry_count INTEGER DEFAULT 0
 );
 
+-- 会话快照（恢复现场用）
+CREATE TABLE IF NOT EXISTS session_snapshots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    brief TEXT NOT NULL,
+    full_content TEXT NOT NULL,
+    task_summary TEXT,
+    files_modified TEXT,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','loaded','archived'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_snapshots_status ON session_snapshots(status);
+CREATE INDEX IF NOT EXISTS idx_snapshots_session ON session_snapshots(session_id);
+
+-- 全文搜索（FTS5）
+CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+    content,
+    keywords,
+    content='entries',
+    content_rowid='id'
+);
+
+-- 触发器：写入 entries 时自动同步 FTS 索引
+CREATE TRIGGER IF NOT EXISTS entries_ai AFTER INSERT ON entries BEGIN
+    INSERT INTO entries_fts(rowid, content, keywords) VALUES (new.id, new.content, new.keywords);
+END;
+
+CREATE TRIGGER IF NOT EXISTS entries_ad AFTER DELETE ON entries BEGIN
+    INSERT INTO entries_fts(entries_fts, rowid, content, keywords) VALUES('delete', old.id, old.content, old.keywords);
+END;
+
+CREATE TRIGGER IF NOT EXISTS entries_au AFTER UPDATE ON entries BEGIN
+    INSERT INTO entries_fts(entries_fts, rowid, content, keywords) VALUES('delete', old.id, old.content, old.keywords);
+    INSERT INTO entries_fts(rowid, content, keywords) VALUES (new.id, new.content, new.keywords);
+END;
+
 -- ============================================================
 -- 预设类目
 -- ============================================================
 
 INSERT OR IGNORE INTO categories (id, parent_id, name, path) VALUES (1, NULL, '工作', '工作');
 INSERT OR IGNORE INTO categories (id, parent_id, name, path) VALUES (2, NULL, '生活', '生活');
+INSERT OR IGNORE INTO categories (id, parent_id, name, path) VALUES (3, NULL, '杂项', '杂项');
 
 -- 工作大类
 INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (1, '设计', '工作/设计');
@@ -71,11 +109,15 @@ INSERT OR IGNORE INTO categories (parent_id, name, path)
     VALUES ((SELECT id FROM categories WHERE path='工作/开发'), '后端', '工作/开发/后端');
 
 -- 生活大类
-INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (2, '科技/AI资讯', '生活/科技/AI资讯');
+INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (2, '科技', '生活/科技');
 INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (2, '国际大事', '生活/国际大事');
 INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (2, '行政动态', '生活/行政动态');
 INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (2, '财经', '生活/财经');
 INSERT OR IGNORE INTO categories (parent_id, name, path) VALUES (2, '健康', '生活/健康');
+
+-- 生活小类
+INSERT OR IGNORE INTO categories (parent_id, name, path)
+    VALUES ((SELECT id FROM categories WHERE path='生活/科技'), 'AI资讯', '生活/科技/AI资讯');
 
 -- 生活小类
 INSERT OR IGNORE INTO categories (parent_id, name, path)

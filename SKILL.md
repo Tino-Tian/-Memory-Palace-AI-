@@ -52,11 +52,11 @@ ORDER BY e.date DESC;
 **查询：**
 
 ```bash
-# 按关键词
+# 按关键词（FTS5 全文搜索，支持多词和前缀）
 sqlite3 ~/memory-palace/palace.db "
 SELECT c.path, e.date, e.content FROM entries e
 JOIN categories c ON e.category_id = c.id
-WHERE e.keywords LIKE '%关键词%' OR c.path LIKE '%关键词%'
+WHERE e.id IN (SELECT rowid FROM entries_fts WHERE entries_fts MATCH '关键词')
 ORDER BY e.date DESC LIMIT 5;
 "
 
@@ -75,7 +75,9 @@ WHERE e.date >= '指定日期' ORDER BY e.date DESC LIMIT 5;
 
 ```bash
 ls ~/memory-palace/归档/ | tail -5
-gunzip -c ~/memory-palace/归档/YYYY-WXX.db.gz | sqlite3 /dev/stdin "SELECT ..."
+# 归档是 gzip 压缩的 SQLite 数据库，解压后直接查询
+gunzip -k ~/memory-palace/归档/YYYY-WXX.db.gz
+sqlite3 ~/memory-palace/归档/YYYY-WXX.db "SELECT * FROM entries WHERE keywords LIKE '%关键词%';"
 ```
 
 ## 三、会话结束时（自动归档）
@@ -205,11 +207,13 @@ UPDATE entries SET level='digest'
 WHERE level='raw' AND date <= date('now','-3 days');
 "
 
-# digest 超过 7 天 → 导出打包，从主库删除
-sqlite3 ~/memory-palace/palace.db ".headers on" -csv "
-SELECT id, category_id, date, level, content, keywords, conversation_id
-FROM entries WHERE level='digest' AND date <= date('now','-7 days');
-" | gzip > ~/memory-palace/归档/$(date +%Y-W%V).db.gz
+# digest 超过 7 天 → 导出为 SQLite 数据库，gzip 压缩，从主库删除
+sqlite3 ~/memory-palace/palace.db "
+ATTACH '~/memory-palace/归档/$(date +%Y-W%V).db' AS archive;
+CREATE TABLE archive.entries (id, category_id, date, level, content, keywords, conversation_id);
+INSERT INTO archive.entries SELECT * FROM entries WHERE level='digest' AND date <= date('now','-7 days');
+"
+gzip -f ~/memory-palace/归档/$(date +%Y-W%V).db
 
 sqlite3 ~/memory-palace/palace.db "
 DELETE FROM entries WHERE level='digest' AND date <= date('now','-7 days');
@@ -238,12 +242,12 @@ WHERE path IN ('本次归档涉及的所有类目路径，用逗号分隔并加�
 sqlite3 ~/memory-palace/palace.db "
 SELECT c.path, e.date, e.content FROM entries e
 JOIN categories c ON e.category_id = c.id
-WHERE e.keywords LIKE '%关键词%' OR e.content LIKE '%关键词%'
+WHERE e.id IN (SELECT rowid FROM entries_fts WHERE entries_fts MATCH '关键词')
 ORDER BY e.date DESC LIMIT 10;
 "
 # 如果主库没找到，搜索归档
 for f in ~/memory-palace/归档/*.db.gz; do
-  gunzip -c "$f" | grep -i '关键词' && echo "（来自归档: $f）"
+  gunzip -kf "$f" && sqlite3 "${f%.gz}" "SELECT date, content FROM entries WHERE keywords LIKE '%关键词%' OR content LIKE '%关键词%';" && echo "（来自归档: $f）"
 done
 ```
 

@@ -580,11 +580,44 @@ path = '$CC_SETTINGS'
 with open(path, 'r') as f:
     cfg = json.load(f)
 cfg.setdefault('hooks', {})
-cfg.setdefault('hooks', {}).setdefault('SessionStart', [])
-# 防止重复
-cmd = 'bash $HOME/memory-palace/hooks/startup.sh'
-if not any(h.get('command','') == cmd for h in cfg['hooks']['SessionStart']):
-    cfg['hooks']['SessionStart'].append({'type': 'command', 'command': cmd})
+
+# SessionStart 钩子（启动时加载索引）
+cfg['hooks'].setdefault('SessionStart', [])
+startup_cmd = 'bash $HOME/memory-palace/hooks/startup.sh'
+startup_exists = any(
+    h.get('hooks', [{}])[0].get('command', '') == startup_cmd
+    for h in cfg['hooks']['SessionStart']
+)
+if not startup_exists:
+    cfg['hooks']['SessionStart'].append({
+        'matcher': '',
+        'hooks': [{'type': 'command', 'command': startup_cmd}]
+    })
+
+# Stop 钩子（每次回答后心跳检测）
+cfg['hooks'].setdefault('Stop', [])
+stop_cmd = 'bash $HOME/memory-palace/hooks/stop.sh'
+stop_exists = any(
+    h.get('command', '') == stop_cmd
+    for h in cfg['hooks']['Stop']
+)
+if not stop_exists:
+    cfg['hooks']['Stop'].append({
+        'hooks': [{'type': 'command', 'command': stop_cmd}]
+    })
+
+# SessionEnd 钩子（退出时自动归档）
+cfg['hooks'].setdefault('SessionEnd', [])
+end_cmd = 'bash $HOME/memory-palace/hooks/session-end.sh'
+end_exists = any(
+    h.get('command', '') == end_cmd
+    for h in cfg['hooks']['SessionEnd']
+)
+if not end_exists:
+    cfg['hooks']['SessionEnd'].append({
+        'hooks': [{'type': 'command', 'command': end_cmd}]
+    })
+
 with open(path, 'w') as f:
     json.dump(cfg, f, indent=2, ensure_ascii=False)
 " 2>/dev/null && CLAUDE_CONFIGURED=true
@@ -601,6 +634,11 @@ else
     echo -e "  ${YELLOW}⊘${NC} 未检测到 Claude Code ($CC_SETTINGS 不存在)"
     echo -e "  ${CYAN}  提示:${NC} 如使用 ChatGPT 等其他 AI，将 SKILL.md 粘贴到系统提示词即可"
 fi
+
+# 安装 slash commands
+mkdir -p "$HOME/.claude/commands"
+cp -r "$INSTALL_DIR/commands/" "$HOME/.claude/commands/" 2>/dev/null && \
+    echo -e "  ${GREEN}✓${NC} Slash commands 已安装到 ~/.claude/commands/"
 
 # ============================================================
 # 完成
